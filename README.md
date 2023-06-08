@@ -1,4 +1,4 @@
-This repo uses rerun.io to visualize [Shap-E](https://github.com/openai/shap-e) and [Point-E](https://github.com/openai/point-e) from OpenAI
+This repo uses Rerun[https://github.com/rerun-io/rerun] to visualize [Shap-E](https://github.com/openai/shap-e) and [Point-E](https://github.com/openai/point-e) from OpenAI
 # Installation
 run the following command
 
