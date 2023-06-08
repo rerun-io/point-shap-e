@@ -1,0 +1,7 @@
+-e git+https://github.com/openai/shap-e#egg=shap-e
+-e git+https://github.com/openai/point-e#egg=point-e
+--pre
+--find-links https://build.rerun.io/commit/cd95a96/wheels
+rerun-sdk
+pyaml
+ipywidgets
