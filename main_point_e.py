@@ -144,4 +144,4 @@ if __name__ == "__main__":
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "point-e demo")
-    main(args.prompt, args.view_steps)
+    main(args.prompt, args.log_diffusion)
