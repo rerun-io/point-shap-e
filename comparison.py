@@ -16,9 +16,9 @@ from main_shap_e import load_sampler_and_model as load_models_shap_e
 
 
 def compare_text2mesh(prompt: str):
-    shap_e_entity_path = f"shap-e/{prompt}"
-    point_e_entity_path = f"point-e/{prompt}"
-    rr.log(f"prompts/{prompt}", rr.TextDocument(f"Prompt: {prompt}"), timeless=True)
+    shap_e_entity_path = f'shap-e/"{prompt}"'
+    point_e_entity_path = f'point-e/"{prompt}"'
+    rr.log(f'prompts/"{prompt}"', rr.TextDocument(f"Prompt: {prompt}"), timeless=True)
     rr.log(shap_e_entity_path, rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     rr.log(point_e_entity_path, rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,7 +46,7 @@ def compare_text2mesh(prompt: str):
 
         coords = pc.coords
         colors = np.stack([pc.channels[x] for x in "RGB"], axis=1)
-        rr.log(f"{point_e_entity_path}/points", rr.Points2D(coords, colors=colors))
+        rr.log(f"{point_e_entity_path}/points", rr.Points3D(coords, colors=colors))
 
         samples_shap_e = x_shap_e["x"]
         shap_e_mesh = decode_latent_mesh(xm, samples_shap_e[0]).tri_mesh()
@@ -106,6 +106,7 @@ def compare_img2mesh(image_path: Path):
         )
     ):
         rr.set_time_sequence("diffusion_step", diffusion_step)
+
         # POINT-E
         samples_point_e = x_point_e
         pc = point_e_sampler.output_to_point_clouds(samples_point_e)[0]
@@ -156,10 +157,10 @@ def main(compare_mode: Literal["text2mesh", "img2mesh"], prompt: str, image_path
         compare_img2mesh(image_path)
     else:
         for prompt in [
-            "a cheeseburger",
-            "a donut with pink icing",
-            "a penguin",
-            "ube ice cream cone",
+                "a cheeseburger",
+                "a donut with pink icing",
+                "a penguin",
+                "ube ice cream cone",
         ]:
             compare_text2mesh(prompt)
 

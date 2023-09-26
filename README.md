@@ -11,11 +11,11 @@ run the following command
 # Running Examples
 ## Shap-E
 ```bash
-python main_shap_e.py --prompt {YOUR_PROMPT}
+python main_shap_e.py --prompt {YOUR_PROMPT} --log-diffusion
 ```
 ## Point-E
 ```bash
-python main_point_e.py --prompt {YOUR_PROMPT}
+python main_point_e.py --prompt {YOUR_PROMPT} --log-diffusion
 ```
 
 ## Comparison
