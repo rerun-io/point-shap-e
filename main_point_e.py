@@ -1,15 +1,16 @@
-import torch
 import argparse
-import rerun as rr
-import numpy as np
-from tqdm.auto import tqdm
 from typing import Literal
 
+import numpy as np
+import rerun as rr
+import torch
 from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
 from point_e.diffusion.sampler import PointCloudSampler
-from point_e.models.download import load_checkpoint
 from point_e.models.configs import MODEL_CONFIGS, model_from_config
+from point_e.models.download import load_checkpoint
 from point_e.util.pc_to_mesh import marching_cubes_mesh
+from rerun.components import MeshProperties
+from tqdm.auto import tqdm
 
 
 def load_sampler_and_model(
@@ -61,8 +62,10 @@ def load_sampler_and_model(
 
 
 def main(prompt: str, view_steps: bool = False):
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("prompt", rr.TextDocument(f"Prompt: {prompt}"))
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    rr.experimental.log_text_box(f"Prompt/{prompt}", f"Prompt: {prompt}", timeless=True)
     sampler, sdf_model = load_sampler_and_model(device)
 
     # Produce a sample from the model.
@@ -77,25 +80,27 @@ def main(prompt: str, view_steps: bool = False):
         if view_steps:
             rr.set_time_sequence("diffusion_step", diffusion_step)
             if diffusion_step <= 64:
-                rr.experimental.log_text_box(
-                    f"{prompt}", f"Prompt: {prompt}\nStep 1: coarse point cloud"
+                rr.log(
+                    "prompt",
+                    rr.TextDocument(f"Prompt: {prompt}\nStep 1: coarse point cloud"),
                 )
             if diffusion_step > 64:
-                rr.experimental.log_text_box(
-                    f"{prompt}", f"Prompt: {prompt}\nStep 2: fine point cloud"
+                rr.log(
+                    "prompt",
+                    rr.TextDocument(f"Prompt: {prompt}\nStep 2: fine point cloud"),
                 )
 
             pc = sampler.output_to_point_clouds(samples)[0]
 
             coords = pc.coords
             colors = np.stack([pc.channels[x] for x in "RGB"], axis=1)
-            rr.log_points("world/points", coords, colors=colors)
+            rr.log("world/points", rr.Points3D(positions=coords, colors=colors))
         diffusion_step += 1
 
     pc = sampler.output_to_point_clouds(samples)[0]
     coords = pc.coords
     colors = np.stack([pc.channels[x] for x in "RGB"], axis=1)
-    rr.log_points("world/points", coords, colors=colors)
+    rr.log("world/points", rr.Points3D(positions=coords, colors=colors))
 
     mesh = marching_cubes_mesh(
         pc=pc,
@@ -106,14 +111,17 @@ def main(prompt: str, view_steps: bool = False):
     )
 
     mesh_colors = np.stack([mesh.vertex_channels[x] for x in "RGB"], axis=1)
-    rr.log_mesh(
+    rr.log(
         "world/mesh",
-        positions=mesh.verts,
-        indices=mesh.faces,
-        vertex_colors=mesh_colors,
+        rr.Mesh3D(
+            vertex_positions=mesh.verts,
+            mesh_properties=MeshProperties(mesh.faces),
+            vertex_colors=mesh_colors,
+        ),
     )
-    rr.experimental.log_text_box(
-        f"{prompt}", f"Prompt: {prompt}\nStep 3: mesh via sdf and marching cubes"
+    rr.log(
+        "prompt",
+        rr.TextDocument(f"Prompt: {prompt}\nStep 3: mesh via SDF and marching cubes"),
     )
 
 

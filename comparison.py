@@ -1,23 +1,26 @@
 import argparse
-import rerun as rr
-import torch
-import numpy as np
 from pathlib import Path
-from tqdm.auto import tqdm
 from typing import Literal
+
+import numpy as np
+import rerun as rr
+from rerun.components import MeshProperties
+import torch
+from point_e.util.pc_to_mesh import marching_cubes_mesh
+from shap_e.util.image_util import load_image
+from shap_e.util.notebooks import decode_latent_mesh
+from tqdm.auto import tqdm
+
 from main_point_e import load_sampler_and_model as load_models_point_e
 from main_shap_e import load_sampler_and_model as load_models_shap_e
-from point_e.util.pc_to_mesh import marching_cubes_mesh
-from shap_e.util.notebooks import decode_latent_mesh
-from shap_e.util.image_util import load_image
 
 
 def compare_text2mesh(prompt: str):
-    shap_e_log_path = f"Shap-E: {prompt}"
-    point_e_log_path = f"Point-E: {prompt}"
-    rr.experimental.log_text_box(f"Prompt/{prompt}", f"Prompt: {prompt}", timeless=True)
-    rr.log_view_coordinates(shap_e_log_path, up="+Z", timeless=True)
-    rr.log_view_coordinates(point_e_log_path, up="+Z", timeless=True)
+    shap_e_entity_path = f"shap-e/{prompt}"
+    point_e_entity_path = f"point-e/{prompt}"
+    rr.log(f"prompts/{prompt}", rr.TextDocument(f"Prompt: {prompt}"), timeless=True)
+    rr.log(shap_e_entity_path, rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log(point_e_entity_path, rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Load in point-e and shap-e models
     point_e_sampler, sdf_model = load_models_point_e(device)
@@ -43,17 +46,19 @@ def compare_text2mesh(prompt: str):
 
         coords = pc.coords
         colors = np.stack([pc.channels[x] for x in "RGB"], axis=1)
-        rr.log_points(f"{point_e_log_path}/points", coords, colors=colors)
+        rr.log(f"{point_e_entity_path}/points", rr.Points2D(coords, colors=colors))
 
         samples_shap_e = x_shap_e["x"]
         shap_e_mesh = decode_latent_mesh(xm, samples_shap_e[0]).tri_mesh()
         colors = np.stack([shap_e_mesh.vertex_channels[x] for x in "RGB"], axis=1)
         # log mesh
-        rr.log_mesh(
-            f"{shap_e_log_path}/mesh",
-            positions=shap_e_mesh.verts,
-            indices=shap_e_mesh.faces,
-            vertex_colors=colors,
+        rr.log(
+            f"{shap_e_entity_path}/mesh",
+            rr.Mesh3D(
+                vertex_positions=shap_e_mesh.verts,
+                mesh_properties=MeshProperties(vertex_indices=shap_e_mesh.faces),
+                vertex_colors=colors,
+            )
         )
         diffusion_step += 1
 
@@ -66,18 +71,20 @@ def compare_text2mesh(prompt: str):
     )
 
     mesh_colors = np.stack([mesh.vertex_channels[x] for x in "RGB"], axis=1)
-    rr.log_mesh(
-        f"{point_e_log_path}/mesh",
-        positions=mesh.verts,
-        indices=mesh.faces,
-        vertex_colors=mesh_colors,
+    rr.log(
+        f"{point_e_entity_path}/mesh",
+        rr.Mesh3D(
+            vertex_positions=mesh.verts,
+            mesh_properties=MeshProperties(vertex_indices=mesh.faces),
+            vertex_colors=mesh_colors,
+        )
     )
 
 
 def compare_img2mesh(image_path: Path):
     assert image_path.exists()
-    rr.log_view_coordinates("point-e", up="+Z", timeless=True)
-    rr.log_view_coordinates("shap-e", up="+Z", timeless=True)
+    rr.log("point-e", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("shap-e", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     image = load_image(str(image_path))
     point_e_sampler, sdf_model = load_models_point_e(device, type="img")
@@ -104,18 +111,20 @@ def compare_img2mesh(image_path: Path):
         pc = point_e_sampler.output_to_point_clouds(samples_point_e)[0]
         coords = pc.coords
         colors = np.stack([pc.channels[x] for x in "RGB"], axis=1)
-        rr.log_points("point-e/points", coords, colors=colors)
+        rr.log("point-e/points", rr.Points3D(coords, colors=colors))
 
         # SHAP-E
         samples_shap_e = x_shap_e["x"]
         shap_e_mesh = decode_latent_mesh(xm, samples_shap_e[0]).tri_mesh()
         colors = np.stack([shap_e_mesh.vertex_channels[x] for x in "RGB"], axis=1)
         # log mesh
-        rr.log_mesh(
+        rr.log(
             "shap-e/mesh",
-            positions=shap_e_mesh.verts,
-            indices=shap_e_mesh.faces,
-            vertex_colors=colors,
+            rr.Mesh3D(
+                vertex_positions=shap_e_mesh.verts,
+                mesh_properties=MeshProperties(vertex_indices=shap_e_mesh.faces),
+                vertex_colors=colors,
+            )
         )
         diffusion_step += 1
 
@@ -129,11 +138,13 @@ def compare_img2mesh(image_path: Path):
     )
 
     mesh_colors = np.stack([mesh.vertex_channels[x] for x in "RGB"], axis=1)
-    rr.log_mesh(
+    rr.log(
         "point-e/mesh",
-        positions=mesh.verts,
-        indices=mesh.faces,
-        vertex_colors=mesh_colors,
+        rr.Mesh3D(
+            vertex_positions=mesh.verts,
+            mesh_properties=MeshProperties(vertex_indices=mesh.faces),
+            vertex_colors=mesh_colors,
+        )
     )
 
 
@@ -171,7 +182,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image-path", type=Path, default="corgi.jpg", help="path to image"
     )
-    parser.add_argument("--log-diffusion", action="store_true")
     rr.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
