@@ -193,6 +193,7 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
             mesh_properties=MeshProperties(vertex_indices=final_mesh.faces),
             vertex_colors=colors,
         ),
+        timeless=True
     )
 
     # regenerate cameras for logging
@@ -230,4 +231,4 @@ if __name__ == "__main__":
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "shap-e demo")
-    main(args.prompt, args.render_mode, args.render_size, args.view_steps)
+    main(args.prompt, args.render_mode, args.render_size, args.log_diffusion)
