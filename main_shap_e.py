@@ -1,24 +1,22 @@
-import torch
 import argparse
+from typing import Any, Dict, Literal, Optional
+
+import numpy as np
+import rerun as rr
+import torch
+import torch.nn as nn
+from PIL import Image
+from shap_e.diffusion.gaussian_diffusion import GaussianDiffusion, diffusion_from_config
 
 # from shap_e.diffusion.sample import sample_latents
 from shap_e.diffusion.k_diffusion import karras_sample_progressive
-from shap_e.diffusion.gaussian_diffusion import diffusion_from_config, GaussianDiffusion
-from shap_e.models.download import load_model, load_config
+from shap_e.models.download import load_config, load_model
+from shap_e.models.nn.camera import DifferentiableProjectiveCamera
 from shap_e.util.notebooks import (
     create_pan_cameras,
     decode_latent_images,
     decode_latent_mesh,
 )
-from shap_e.models.nn.camera import (
-    DifferentiableProjectiveCamera,
-)
-from scipy.spatial.transform import Rotation
-import numpy as np
-import rerun as rr
-import torch.nn as nn
-from typing import Any, Dict, Optional, Literal
-from PIL import Image
 
 
 def load_sampler_and_model(
@@ -72,11 +70,9 @@ def log_differentiable_projective_camera(
         [camera.x[idx].numpy(), camera.y[idx].numpy(), camera.z[idx].numpy()], axis=-1
     )
 
-    rr.log_transform3d(
-        "Shap-E/camera",
-        transform=rr.TranslationAndMat3(
-            translation=translation, matrix=rotation_matrix
-        ),
+    rr.log(
+        "world/camera",
+        rr.TranslationAndMat3x3(translation=translation, matrix=rotation_matrix),
     )
 
     # Compute intrinsics matrix for pinhole camera using FOV values
@@ -89,8 +85,9 @@ def log_differentiable_projective_camera(
     )
 
     # Log pinhole camera
-    rr.log_pinhole(
-        "Shap-E/camera/image", child_from_parent=intri, width=width, height=height
+    rr.log(
+        "world/camera/image",
+        rr.Pinhole(image_from_camera=intri, width=width, height=height),
     )
 
 
@@ -157,8 +154,9 @@ class ShapESampler:
 
 
 def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
-    rr.log_view_coordinates("Shap-E", up="+Z", timeless=True)
-    rr.experimental.log_text_box(f"Prompt/{prompt}", f"Prompt: {prompt}", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("prompt", rr.TextDocument(f"Prompt: {prompt}"), timeless=True)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     shap_e_sampler, xm = load_sampler_and_model(device, prompt=prompt, num_steps=32)
 
@@ -171,11 +169,13 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
             mesh = decode_latent_mesh(xm, latents[0]).tri_mesh()
             colors = np.stack([mesh.vertex_channels[x] for x in "RGB"], axis=1)
             # log mesh
-            rr.log_mesh(
-                "Shap-E/mesh",
-                positions=mesh.verts,
-                indices=mesh.faces,
-                vertex_colors=colors,
+            rr.log(
+                "world/mesh",
+                rr.Mesh3D(
+                    vertex_positions=mesh.verts,
+                    indices=mesh.faces,
+                    vertex_colors=colors,
+                ),
             )
         diffusion_steps += 1
 
@@ -185,12 +185,14 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
     final_mesh = decode_latent_mesh(xm, latents[0]).tri_mesh()
     colors = np.stack([final_mesh.vertex_channels[x] for x in "RGB"], axis=1)
 
-    rr.log_mesh(
-        "Shap-E/mesh",
-        positions=final_mesh.verts,
-        indices=final_mesh.faces,
-        vertex_colors=colors,
-        timeless=True,
+    rr.log(
+        "world/mesh",
+        rr.Mesh3D(
+            vertex_positions=final_mesh.verts,
+            indices=final_mesh.faces,
+            vertex_colors=colors,
+        ),
+        timeless=True
     )
 
     # regenerate cameras for logging
@@ -200,7 +202,7 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
     for idx, image in enumerate(images):
         log_differentiable_projective_camera(cameras.flat_camera, idx)
         rr.set_time_sequence("frame idx", idx)
-        rr.log_image("Shap-E/camera/image", image)
+        rr.log("Shap-E/camera/image", rr.Image(image))
 
 
 if __name__ == "__main__":
@@ -228,4 +230,4 @@ if __name__ == "__main__":
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "shap-e demo")
-    main(args.prompt, args.render_mode, args.render_size, args.view_steps)
+    main(args.prompt, args.render_mode, args.render_size, args.log_diffusion)
