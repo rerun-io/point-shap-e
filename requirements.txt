@@ -2,5 +2,4 @@
 -e git+https://github.com/openai/point-e#egg=point-e
 pyaml
 ipywidgets
--f https://build.rerun.io/commit/b814745/wheels 
-rerun-sdk==0.9.0a4
+rerun-sdk>=0.9.0

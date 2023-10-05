@@ -4,7 +4,6 @@ from typing import Literal
 
 import numpy as np
 import rerun as rr
-from rerun.components import MeshProperties
 import torch
 from point_e.util.pc_to_mesh import marching_cubes_mesh
 from shap_e.util.image_util import load_image
@@ -56,7 +55,7 @@ def compare_text2mesh(prompt: str):
             f"{shap_e_entity_path}/mesh",
             rr.Mesh3D(
                 vertex_positions=shap_e_mesh.verts,
-                mesh_properties=MeshProperties(vertex_indices=shap_e_mesh.faces),
+                indices=shap_e_mesh.faces,
                 vertex_colors=colors,
             )
         )
@@ -75,7 +74,7 @@ def compare_text2mesh(prompt: str):
         f"{point_e_entity_path}/mesh",
         rr.Mesh3D(
             vertex_positions=mesh.verts,
-            mesh_properties=MeshProperties(vertex_indices=mesh.faces),
+            indices=mesh.faces,
             vertex_colors=mesh_colors,
         )
     )
@@ -123,7 +122,7 @@ def compare_img2mesh(image_path: Path):
             "shap-e/mesh",
             rr.Mesh3D(
                 vertex_positions=shap_e_mesh.verts,
-                mesh_properties=MeshProperties(vertex_indices=shap_e_mesh.faces),
+                indices=shap_e_mesh.faces,
                 vertex_colors=colors,
             )
         )
@@ -143,7 +142,7 @@ def compare_img2mesh(image_path: Path):
         "point-e/mesh",
         rr.Mesh3D(
             vertex_positions=mesh.verts,
-            mesh_properties=MeshProperties(vertex_indices=mesh.faces),
+            indices=mesh.faces,
             vertex_colors=mesh_colors,
         )
     )

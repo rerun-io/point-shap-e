@@ -9,7 +9,6 @@ from point_e.diffusion.sampler import PointCloudSampler
 from point_e.models.configs import MODEL_CONFIGS, model_from_config
 from point_e.models.download import load_checkpoint
 from point_e.util.pc_to_mesh import marching_cubes_mesh
-from rerun.components import MeshProperties
 from tqdm.auto import tqdm
 
 
@@ -115,7 +114,7 @@ def main(prompt: str, view_steps: bool = False):
         "world/mesh",
         rr.Mesh3D(
             vertex_positions=mesh.verts,
-            mesh_properties=MeshProperties(mesh.faces),
+            indices=mesh.faces,
             vertex_colors=mesh_colors,
         ),
     )

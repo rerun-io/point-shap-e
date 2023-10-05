@@ -6,7 +6,6 @@ import rerun as rr
 import torch
 import torch.nn as nn
 from PIL import Image
-from rerun.components import MeshProperties
 from shap_e.diffusion.gaussian_diffusion import GaussianDiffusion, diffusion_from_config
 
 # from shap_e.diffusion.sample import sample_latents
@@ -174,7 +173,7 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
                 "world/mesh",
                 rr.Mesh3D(
                     vertex_positions=mesh.verts,
-                    mesh_properties=MeshProperties(vertex_indices=mesh.faces),
+                    indices=mesh.faces,
                     vertex_colors=colors,
                 ),
             )
@@ -190,7 +189,7 @@ def main(prompt: str, render_mode: str, render_size: int, view_step: bool):
         "world/mesh",
         rr.Mesh3D(
             vertex_positions=final_mesh.verts,
-            mesh_properties=MeshProperties(vertex_indices=final_mesh.faces),
+            indices=final_mesh.faces,
             vertex_colors=colors,
         ),
         timeless=True
